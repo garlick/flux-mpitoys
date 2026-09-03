@@ -1,12 +1,18 @@
 CC = mpicc
 
 OVLATENCY_OBJS = ovlatency.o
-LIBADD = -lflux-core -ljansson
+OVLATENCY_LIBADD = -lflux-core -ljansson
 
-all: ovlatency
+HELLO_OBJS = hello.o
+
+PROGS = ovlatency hello
+
+all: $(PROGS)
 
 ovlatency: $(OVLATENCY_OBJS)
-	$(CC) -o $@ $^ $(LIBADD)
+	$(CC) -o $@ $^ $(OVLATENCY_LIBADD)
+hello: $(HELLO_OBJS)
+	$(CC) -o $@ $^
 
 clean:
-	rm -f *.o a.out core
+	rm -f *.o a.out core $(PROGS)
