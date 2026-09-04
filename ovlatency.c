@@ -311,10 +311,16 @@ void display_results (json_t *combined, flux_t *h)
             die ("could not decode results entry");
     }
     qsort (entries, count, sizeof (entries[0]), qcompare);
+    /* careful: flux_get_hostbyrank() result is invalidated on next call */
     for (int i = 0; i < count; i++) {
+        char src_host[256];
+        snprintf (src_host,
+                  sizeof (src_host),
+                  "%s",
+                  flux_get_hostbyrank (h, entries[i].src));
         printf ("%s (rank %d) to %s (rank %d):"
                 " %.1f msec (min %.1f, max %.1f)\n",
-                flux_get_hostbyrank (h, entries[i].src),
+                src_host,
                 entries[i].src,
                 flux_get_hostbyrank (h, entries[i].dst),
                 entries[i].dst,
