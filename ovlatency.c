@@ -8,7 +8,17 @@
  * SPDX-License-Identifier: LGPL-3.0
 \************************************************************/
 
-/* ovlatency.c - print ping RTT for all TBON edges, sorted by RTT */
+/* ovlatency.c - print ping RTT for all TBON edges, sorted by average RTT
+ *
+ * Ideally this should be run with one task per node across a
+ * full Flux instance, e.g.
+ *
+ * flux run -N $(flux getattr size) ./ovlatency 100
+ *
+ * Results will be incomplete if run on fewer nodes.  Results will include
+ * duplicates and may be innacurate due to interference if run on more than
+ * one task per node.  The MPI rank does not need to match the broker rank.
+ */
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -133,7 +143,7 @@ json_t *ping_children (flux_t *h, json_t *topo, int ping_count)
  * Use barriers to ensure each TBON level completes its pings
  * before the next level begins, to avoid interference.
  */
-char *ping_children_tostring (flux_t *h, int rank, int ping_count)
+char *ping_children_tostring (flux_t *h, int flux_rank, int ping_count)
 {
     json_t *results;
     flux_future_t *f;
@@ -148,7 +158,7 @@ char *ping_children_tostring (flux_t *h, int rank, int ping_count)
                              FLUX_NODEID_ANY,
                              0,
                              "{s:i}",
-                             "rank", rank))
+                             "rank", flux_rank))
         || flux_rpc_get_unpack (f, "o", &topo) < 0)
         die ("error fetching topology: %s", future_strerror (f, errno));
 
@@ -347,16 +357,14 @@ int main (int argc, char **argv)
     MPI_Comm_size (MPI_COMM_WORLD, &size);
 
     if (argc != 2 || (ping_count = strtoul (argv[1], NULL, 10)) <= 0)
-        die ("Usage: mpirun ovlatency ping_count");
+        die ("Usage: flux run -N $(flux getattr size) ./ovlatency ping_count");
 
     if (!(h = flux_open_ex (NULL, 0, &error)))
         die ("flux_open: %s", error.text);
     if (flux_get_rank (h, &flux_rank) < 0)
         die ("could not fetch flux rank: %s", strerror (errno));
-    if (flux_rank != rank)
-        die ("MPI rank %d != flux broker rank %d", rank, (int)flux_rank);
 
-    s = ping_children_tostring (h, rank, ping_count);
+    s = ping_children_tostring (h, (int)flux_rank, ping_count);
 
     buf = gather_strings (rank, size, s, &offsets);
 
