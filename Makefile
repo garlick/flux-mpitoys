@@ -1,4 +1,5 @@
 CC = mpicc
+CFLAGS = -Wall -Werror
 
 OVLATENCY_OBJS = ovlatency.o
 OVLATENCY_LIBADD = -lflux-core -ljansson
